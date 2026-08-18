@@ -1,0 +1,2 @@
+CREATE POLICY "Anyone can upload kaizen attachments" ON storage.objects FOR INSERT TO anon, authenticated WITH CHECK (bucket_id = 'kaizen-attachments');
+CREATE POLICY "Staff can read kaizen attachments" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'kaizen-attachments' AND public.is_staff(auth.uid()));
