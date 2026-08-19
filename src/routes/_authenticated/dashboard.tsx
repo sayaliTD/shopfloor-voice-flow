@@ -344,6 +344,34 @@ function Dashboard() {
             <Download className="size-4" />
             Export CSV
           </button>
+          {canManageRoster ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) rosterMutation.mutate(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={rosterMutation.isPending}
+                className="flex items-center gap-2 rounded-lg bg-sidebar-accent px-3 py-2 text-sm font-semibold disabled:opacity-60"
+              >
+                {rosterMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Upload className="size-4" />
+                )}
+                Upload Employee Roster (CSV)
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             onClick={signOut}
