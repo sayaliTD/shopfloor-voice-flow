@@ -509,14 +509,27 @@ function Dashboard() {
                     </td>
                     <td className="px-4 py-3 font-bold">{row.reward_points}</td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setOpenRow(row)}
-                        className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
-                      >
-                        Review
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenRow(row)}
+                          className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
+                        >
+                          Review
+                        </button>
+                        {isSystemManager ? (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteRow(row)}
+                            aria-label={`Delete Kaizen from employee ${row.employee_id}`}
+                            className="rounded-lg border border-destructive p-2 text-destructive"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
