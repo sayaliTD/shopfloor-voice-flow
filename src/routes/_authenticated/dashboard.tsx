@@ -8,15 +8,63 @@ import {
   LogOut,
   RefreshCw,
   Search,
+  Trash2,
+  Upload,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { STATUSES, STATUS_LABEL, StatusBadge, type KaizenStatus } from "@/components/kaizen/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 
 const BUCKET = "kaizen-attachments";
+
+function parseRosterCsv(text: string): { employee_id: string; full_name: string }[] {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (!lines.length) return [];
+
+  const splitRow = (line: string) => {
+    const cells: string[] = [];
+    let current = "";
+    let quoted = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (quoted && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else quoted = !quoted;
+      } else if (char === "," && !quoted) {
+        cells.push(current);
+        current = "";
+      } else current += char;
+    }
+    cells.push(current);
+    return cells.map((cell) => cell.trim());
+  };
+
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+  const header = splitRow(lines[0]).map(normalize);
+  const idKeys = ["employeeid", "empid", "id", "employeecode"];
+  const nameKeys = ["employeename", "fullname", "name", "employee"];
+  let idIndex = header.findIndex((cell) => idKeys.includes(cell));
+  let nameIndex = header.findIndex((cell) => nameKeys.includes(cell));
+  const hasHeader = idIndex !== -1 || nameIndex !== -1;
+  if (idIndex === -1) idIndex = 0;
+  if (nameIndex === -1) nameIndex = 1;
+
+  const rows = hasHeader ? lines.slice(1) : lines;
+  const map = new Map<string, string>();
+  rows.forEach((line) => {
+    const cells = splitRow(line);
+    const id = (cells[idIndex] ?? "").replace(/[^0-9]/g, "");
+    const name = cells[nameIndex] ?? "";
+    if (id && name) map.set(id, name);
+  });
+  return [...map.entries()].map(([employee_id, full_name]) => ({ employee_id, full_name }));
+}
+
 
 type KaizenRow = {
   id: string;
