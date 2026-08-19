@@ -237,14 +237,44 @@ function Dashboard() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "Update failed"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("kaizens").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Kaizen deleted");
+      setDeleteRow(null);
+      queryClient.invalidateQueries({ queryKey: ["kaizens"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Delete failed"),
+  });
+
+  const rosterMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const rows = parseRosterCsv(await file.text());
+      if (!rows.length) throw new Error("No valid rows found. Expected columns: employee_id, employee_name");
+      const { error } = await supabase.from("employees").upsert(rows, { onConflict: "employee_id" });
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`Successfully updated ${count} employees`);
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Roster upload failed"),
+  });
+
   const filtered = useMemo(() => {
     const rows = kaizensQuery.data ?? [];
     return rows.filter((row) => {
       if (statusFilter !== "all" && row.status !== statusFilter) return false;
       if (search.trim()) {
         const needle = search.trim().toLowerCase();
+        const name = employeeNames?.get(row.employee_id)?.toLowerCase() ?? "";
         if (
           !row.employee_id.includes(needle) &&
+          !name.includes(needle) &&
           !row.transcription.toLowerCase().includes(needle)
         )
           return false;
@@ -253,7 +283,8 @@ function Dashboard() {
       if (toDate && new Date(row.created_at) > new Date(`${toDate}T23:59:59`)) return false;
       return true;
     });
-  }, [kaizensQuery.data, statusFilter, search, fromDate, toDate]);
+  }, [kaizensQuery.data, statusFilter, search, fromDate, toDate, employeeNames]);
+
 
   const counts = useMemo(() => {
     const rows = kaizensQuery.data ?? [];
