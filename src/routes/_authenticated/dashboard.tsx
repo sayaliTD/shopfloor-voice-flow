@@ -8,15 +8,63 @@ import {
   LogOut,
   RefreshCw,
   Search,
+  Trash2,
+  Upload,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { STATUSES, STATUS_LABEL, StatusBadge, type KaizenStatus } from "@/components/kaizen/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 
 const BUCKET = "kaizen-attachments";
+
+function parseRosterCsv(text: string): { employee_id: string; full_name: string }[] {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (!lines.length) return [];
+
+  const splitRow = (line: string) => {
+    const cells: string[] = [];
+    let current = "";
+    let quoted = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (quoted && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else quoted = !quoted;
+      } else if (char === "," && !quoted) {
+        cells.push(current);
+        current = "";
+      } else current += char;
+    }
+    cells.push(current);
+    return cells.map((cell) => cell.trim());
+  };
+
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+  const header = splitRow(lines[0] ?? "").map(normalize);
+  const idKeys = ["employeeid", "empid", "id", "employeecode"];
+  const nameKeys = ["employeename", "fullname", "name", "employee"];
+  let idIndex = header.findIndex((cell) => idKeys.includes(cell));
+  let nameIndex = header.findIndex((cell) => nameKeys.includes(cell));
+  const hasHeader = idIndex !== -1 || nameIndex !== -1;
+  if (idIndex === -1) idIndex = 0;
+  if (nameIndex === -1) nameIndex = 1;
+
+  const rows = hasHeader ? lines.slice(1) : lines;
+  const map = new Map<string, string>();
+  rows.forEach((line) => {
+    const cells = splitRow(line);
+    const id = (cells[idIndex] ?? "").replace(/[^0-9]/g, "");
+    const name = cells[nameIndex] ?? "";
+    if (id && name) map.set(id, name);
+  });
+  return [...map.entries()].map(([employee_id, full_name]) => ({ employee_id, full_name }));
+}
+
 
 type KaizenRow = {
   id: string;
@@ -99,6 +147,9 @@ function Dashboard() {
   const [toDate, setToDate] = useState("");
   const [openRow, setOpenRow] = useState<KaizenWithLinks | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [deleteRow, setDeleteRow] = useState<KaizenWithLinks | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
 
   const roleQuery = useQuery({
     queryKey: ["my-role"],
@@ -116,6 +167,20 @@ function Dashboard() {
       };
     },
   });
+  const roles = roleQuery.data?.roles ?? [];
+  const isSystemManager = roles.includes("system_manager");
+  const canManageRoster = isSystemManager || roles.includes("hr");
+
+  const employeesQuery = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("employee_id, full_name");
+      if (error) throw error;
+      return new Map((data ?? []).map((row) => [row.employee_id, row.full_name]));
+    },
+  });
+  const employeeNames = employeesQuery.data;
+
 
   const kaizensQuery = useQuery({
     queryKey: ["kaizens"],
@@ -172,14 +237,44 @@ function Dashboard() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "Update failed"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("kaizens").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Kaizen deleted");
+      setDeleteRow(null);
+      queryClient.invalidateQueries({ queryKey: ["kaizens"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Delete failed"),
+  });
+
+  const rosterMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const rows = parseRosterCsv(await file.text());
+      if (!rows.length) throw new Error("No valid rows found. Expected columns: employee_id, employee_name");
+      const { error } = await supabase.from("employees").upsert(rows, { onConflict: "employee_id" });
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`Successfully updated ${count} employees`);
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Roster upload failed"),
+  });
+
   const filtered = useMemo(() => {
     const rows = kaizensQuery.data ?? [];
     return rows.filter((row) => {
       if (statusFilter !== "all" && row.status !== statusFilter) return false;
       if (search.trim()) {
         const needle = search.trim().toLowerCase();
+        const name = employeeNames?.get(row.employee_id)?.toLowerCase() ?? "";
         if (
           !row.employee_id.includes(needle) &&
+          !name.includes(needle) &&
           !row.transcription.toLowerCase().includes(needle)
         )
           return false;
@@ -188,7 +283,8 @@ function Dashboard() {
       if (toDate && new Date(row.created_at) > new Date(`${toDate}T23:59:59`)) return false;
       return true;
     });
-  }, [kaizensQuery.data, statusFilter, search, fromDate, toDate]);
+  }, [kaizensQuery.data, statusFilter, search, fromDate, toDate, employeeNames]);
+
 
   const counts = useMemo(() => {
     const rows = kaizensQuery.data ?? [];
@@ -248,6 +344,34 @@ function Dashboard() {
             <Download className="size-4" />
             Export CSV
           </button>
+          {canManageRoster ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) rosterMutation.mutate(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={rosterMutation.isPending}
+                className="flex items-center gap-2 rounded-lg bg-sidebar-accent px-3 py-2 text-sm font-semibold disabled:opacity-60"
+              >
+                {rosterMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Upload className="size-4" />
+                )}
+                Upload Employee Roster (CSV)
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             onClick={signOut}
@@ -351,7 +475,17 @@ function Dashboard() {
                 {filtered.map((row) => (
                   <tr key={row.id} className="border-t border-border align-top">
                     <td className="whitespace-nowrap px-4 py-3">{formatDateTime(row.created_at)}</td>
-                    <td className="px-4 py-3 font-mono text-base font-bold">{row.employee_id}</td>
+                    <td className="px-4 py-3">
+                      {employeeNames?.get(row.employee_id) ? (
+                        <>
+                          <p className="font-bold">{employeeNames.get(row.employee_id)}</p>
+                          <p className="font-mono text-xs text-muted-foreground">{row.employee_id}</p>
+                        </>
+                      ) : (
+                        <span className="font-mono text-base font-bold">{row.employee_id}</span>
+                      )}
+                    </td>
+
                     <td className="px-4 py-3">
                       {row.audioLink ? (
                         <audio controls src={row.audioLink} preload="none" className="h-9 w-48" />
@@ -385,14 +519,27 @@ function Dashboard() {
                     </td>
                     <td className="px-4 py-3 font-bold">{row.reward_points}</td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => setOpenRow(row)}
-                        className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
-                      >
-                        Review
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOpenRow(row)}
+                          className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground"
+                        >
+                          Review
+                        </button>
+                        {isSystemManager ? (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteRow(row)}
+                            aria-label={`Delete Kaizen from employee ${row.employee_id}`}
+                            className="rounded-lg border border-destructive p-2 text-destructive"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
+
                   </tr>
                 ))}
               </tbody>

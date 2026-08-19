@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      employees: {
+        Row: {
+          created_at: string
+          employee_id: string
+          full_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          full_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          full_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kaizens: {
         Row: {
           audio_url: string | null
@@ -113,7 +134,7 @@ export type Database = {
       is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "management" | "hr"
+      app_role: "management" | "hr" | "system_manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -241,7 +262,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["management", "hr"],
+      app_role: ["management", "hr", "system_manager"],
     },
   },
 } as const
