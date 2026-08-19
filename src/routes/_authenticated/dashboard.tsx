@@ -475,7 +475,17 @@ function Dashboard() {
                 {filtered.map((row) => (
                   <tr key={row.id} className="border-t border-border align-top">
                     <td className="whitespace-nowrap px-4 py-3">{formatDateTime(row.created_at)}</td>
-                    <td className="px-4 py-3 font-mono text-base font-bold">{row.employee_id}</td>
+                    <td className="px-4 py-3">
+                      {employeeNames?.get(row.employee_id) ? (
+                        <>
+                          <p className="font-bold">{employeeNames.get(row.employee_id)}</p>
+                          <p className="font-mono text-xs text-muted-foreground">{row.employee_id}</p>
+                        </>
+                      ) : (
+                        <span className="font-mono text-base font-bold">{row.employee_id}</span>
+                      )}
+                    </td>
+
                     <td className="px-4 py-3">
                       {row.audioLink ? (
                         <audio controls src={row.audioLink} preload="none" className="h-9 w-48" />
