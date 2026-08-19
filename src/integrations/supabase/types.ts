@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      employees: {
+        Row: {
+          created_at: string
+          employee_id: string
+          full_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          full_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          full_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kaizens: {
         Row: {
           audio_url: string | null
