@@ -147,6 +147,9 @@ function Dashboard() {
   const [toDate, setToDate] = useState("");
   const [openRow, setOpenRow] = useState<KaizenWithLinks | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [deleteRow, setDeleteRow] = useState<KaizenWithLinks | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
 
   const roleQuery = useQuery({
     queryKey: ["my-role"],
