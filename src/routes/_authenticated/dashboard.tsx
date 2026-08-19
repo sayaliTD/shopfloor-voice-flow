@@ -167,6 +167,20 @@ function Dashboard() {
       };
     },
   });
+  const roles = roleQuery.data?.roles ?? [];
+  const isSystemManager = roles.includes("system_manager");
+  const canManageRoster = isSystemManager || roles.includes("hr");
+
+  const employeesQuery = useQuery({
+    queryKey: ["employees"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("employees").select("employee_id, full_name");
+      if (error) throw error;
+      return new Map((data ?? []).map((row) => [row.employee_id, row.full_name]));
+    },
+  });
+  const employeeNames = employeesQuery.data;
+
 
   const kaizensQuery = useQuery({
     queryKey: ["kaizens"],
