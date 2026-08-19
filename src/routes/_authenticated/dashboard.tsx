@@ -45,7 +45,7 @@ function parseRosterCsv(text: string): { employee_id: string; full_name: string 
   };
 
   const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
-  const header = splitRow(lines[0]).map(normalize);
+  const header = splitRow(lines[0] ?? "").map(normalize);
   const idKeys = ["employeeid", "empid", "id", "employeecode"];
   const nameKeys = ["employeename", "fullname", "name", "employee"];
   let idIndex = header.findIndex((cell) => idKeys.includes(cell));
