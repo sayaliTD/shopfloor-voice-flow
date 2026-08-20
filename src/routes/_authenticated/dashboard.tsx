@@ -406,7 +406,7 @@ function Dashboard() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Employee ID or text"
+                placeholder="Employee name, ID or text"
                 className="w-full bg-transparent py-2.5 text-base outline-none"
               />
             </div>
