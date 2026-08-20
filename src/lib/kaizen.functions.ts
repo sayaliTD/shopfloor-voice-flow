@@ -23,7 +23,7 @@ export const transcribeKaizenAudio = createServerFn({ method: "POST" })
       "You are a manufacturing Kaizen (continuous improvement) assistant in an Indian factory.",
       "The audio is a shopfloor operator speaking in Marathi, Hindi or English.",
       "Return ONLY a JSON object with these keys:",
-      '{"language":"Marathi|Hindi|English","transcript":"verbatim transcript in the spoken language","summary":"clear 1-3 sentence English Kaizen summary covering the problem and the suggested improvement","title":"max 8 word English title"}',
+      '{"language":"Marathi|Hindi|English","transcript":"verbatim transcript in the spoken language","summary":"clear 1-3 sentence English Kaizen summary covering the problem ","title":"max 8 word English title"}',
       "If the audio has no intelligible speech, set summary to an empty string.",
     ].join("\n");
 
