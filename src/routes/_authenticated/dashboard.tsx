@@ -169,7 +169,8 @@ function Dashboard() {
   });
   const roles = roleQuery.data?.roles ?? [];
   const isSystemManager = roles.includes("system_manager");
-  const canManageRoster = isSystemManager || roles.includes("hr");
+  // Any signed-in staff member (management, HR or system manager) may import the roster.
+  const canManageRoster = roles.length > 0;
 
   const employeesQuery = useQuery({
     queryKey: ["employees"],

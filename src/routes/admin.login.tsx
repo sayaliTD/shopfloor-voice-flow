@@ -25,7 +25,7 @@ export const Route = createFileRoute("/admin/login")({
 
 function AdminLogin() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -36,6 +36,16 @@ function AdminLogin() {
     event.preventDefault();
     setLoading(true);
     try {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Reset link sent. Check your email inbox.");
+        setMode("signin");
+        return;
+      }
+
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -135,18 +145,24 @@ function AdminLogin() {
               />
             </label>
 
-            <label className="block space-y-1">
-              <span className="text-sm font-semibold">Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                minLength={6}
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                className="w-full rounded-lg border-2 border-input bg-background px-3 py-3 text-base outline-none focus:border-primary"
-              />
-            </label>
+            {mode === "forgot" ? (
+              <p className="text-sm text-muted-foreground">
+                We&apos;ll email you a link to set a new password.
+              </p>
+            ) : (
+              <label className="block space-y-1">
+                <span className="text-sm font-semibold">Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  className="w-full rounded-lg border-2 border-input bg-background px-3 py-3 text-base outline-none focus:border-primary"
+                />
+              </label>
+            )}
 
             <button
               type="submit"
@@ -154,9 +170,18 @@ function AdminLogin() {
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3.5 text-base font-extrabold text-primary-foreground disabled:opacity-60"
             >
               {loading ? <Loader2 className="size-5 animate-spin" /> : <LogIn className="size-5" />}
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode(mode === "forgot" ? "signin" : "forgot")}
+              className="w-full text-center text-sm font-semibold text-muted-foreground underline"
+            >
+              {mode === "forgot" ? "Back to sign in" : "Forgot password?"}
             </button>
           </form>
+
 
           <p className="mt-5 text-center text-sm opacity-80">
             Shopfloor operator?{" "}
