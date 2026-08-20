@@ -406,7 +406,7 @@ function Dashboard() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Employee ID or text"
+                placeholder="Employee name, ID or text"
                 className="w-full bg-transparent py-2.5 text-base outline-none"
               />
             </div>
@@ -462,7 +462,7 @@ function Dashboard() {
               <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Submitted</th>
-                  <th className="px-4 py-3">Emp. ID</th>
+                  <th className="px-4 py-3">Employee</th>
                   <th className="px-4 py-3">Voice note</th>
                   <th className="px-4 py-3">Transcription</th>
                   <th className="px-4 py-3">Photo</th>
@@ -564,6 +564,35 @@ function Dashboard() {
           onClose={() => setOpenRow(null)}
           onSave={(values) => updateMutation.mutate({ id: openRow.id, ...values })}
         />
+      ) : null}
+
+      {deleteRow ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 p-4">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-card p-5 text-card-foreground">
+            <h2 className="text-lg font-extrabold">Delete Kaizen</h2>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this Kaizen submission?
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteRow(null)}
+                className="flex-1 rounded-lg border-2 border-input py-3 text-sm font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleteRow.id)}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-destructive py-3 text-sm font-bold text-destructive-foreground disabled:opacity-60"
+              >
+                {deleteMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
