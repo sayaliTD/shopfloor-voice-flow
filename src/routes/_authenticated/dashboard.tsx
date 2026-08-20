@@ -462,7 +462,7 @@ function Dashboard() {
               <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Submitted</th>
-                  <th className="px-4 py-3">Emp. ID</th>
+                  <th className="px-4 py-3">Employee</th>
                   <th className="px-4 py-3">Voice note</th>
                   <th className="px-4 py-3">Transcription</th>
                   <th className="px-4 py-3">Photo</th>
